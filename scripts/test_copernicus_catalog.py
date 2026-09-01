@@ -63,6 +63,20 @@ def search_sentinel2(token: str) -> list[dict]:
 
     return response.json().get("features", [])
 
+def select_most_recent_scene(
+    scenes: list[dict],
+) -> dict:
+    """Select the most recent scene by acquisition datetime."""
+
+    if not scenes:
+        raise ValueError("No suitable scenes were found.")
+
+    return max(
+        scenes,
+        key=lambda scene: scene.get(
+            "properties", {}
+        ).get("datetime", ""),
+    )
 
 def main() -> None:
     token = get_access_token()
@@ -80,7 +94,18 @@ def main() -> None:
         print("ID:", scene.get("id"))
         print("Date:", properties.get("datetime"))
         print("Cloud cover:", properties.get("eo:cloud_cover"))
+    best_scene = select_most_recent_scene(scenes)
 
+    print()
+    print("=" * 50)
+    print("SELECTED SCENE")
+    print("=" * 50)
+
+    properties = best_scene.get("properties", {})
+
+    print("ID:", best_scene.get("id"))
+    print("Date:", properties.get("datetime"))
+    print("Cloud cover:", properties.get("eo:cloud_cover"))
 
 if __name__ == "__main__":
     main()
