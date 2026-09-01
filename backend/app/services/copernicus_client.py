@@ -3,7 +3,7 @@ from pathlib import Path
 
 import requests
 from dotenv import load_dotenv
-
+from datetime import datetime, timedelta, timezone
 
 load_dotenv()
 
@@ -71,15 +71,15 @@ class CopernicusClient:
         self._access_token = access_token
 
         return access_token
-
+    
     def search_scenes(
-            self,
-            bbox: list[float],
-            start_datetime: str,
-            end_datetime: str,
-            max_cloud_cover: float = 20.0,
-            limit: int = 10,
-        ) -> list[dict]:
+        self,
+        bbox: list[float],
+        start_datetime: str,
+        end_datetime: str,
+        max_cloud_cover: float = 20.0,
+        limit: int = 10,
+    ) -> list[dict]:
             """Search for Sentinel-2 L2A scenes matching the criteria."""
 
             if self._access_token is None:
@@ -131,11 +131,24 @@ class CopernicusClient:
                 "properties", {}
             ).get("datetime", ""),
         )
+    def get_scene_datetime(self, scene: dict) -> str:
+        """Return the acquisition datetime of a Catalog scene."""
+
+        datetime_value = (
+            scene.get("properties", {}).get("datetime")
+        )
+
+        if not datetime_value:
+            raise ValueError(
+                "Selected scene does not contain an acquisition datetime."
+            )
+
+        return datetime_value
+    
     def download_bands(
         self,
+        scene: dict,
         bbox: list[float],
-        start_datetime: str,
-        end_datetime: str,
         output_path: str,
         width: int = 512,
         height: int = 512,
@@ -146,6 +159,25 @@ class CopernicusClient:
         if self._access_token is None:
             self.authenticate()
 
+        scene_datetime = self.get_scene_datetime(scene)
+        acquisition_time = datetime.fromisoformat(
+        scene_datetime.replace("Z", "+00:00")
+        )
+
+        start_time = acquisition_time - timedelta(minutes=1)
+        end_time = acquisition_time + timedelta(minutes=1)
+
+        process_start = (
+            start_time.astimezone(timezone.utc)
+            .isoformat()
+            .replace("+00:00", "Z")
+        )
+
+        process_end = (
+            end_time.astimezone(timezone.utc)
+            .isoformat()
+            .replace("+00:00", "Z")
+        )
         process_url = f"{self.base_url}/api/v1/process"
 
         evalscript = """
@@ -184,8 +216,8 @@ class CopernicusClient:
                         "type": "sentinel-2-l2a",
                         "dataFilter": {
                             "timeRange": {
-                                "from": start_datetime,
-                                "to": end_datetime,
+                                "from": process_start,
+                                "to": process_end,
                             },
                             "maxCloudCoverage": max_cloud_cover,
                             "mosaickingOrder": "mostRecent",

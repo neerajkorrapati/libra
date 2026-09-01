@@ -43,6 +43,10 @@ def main() -> None:
         "Cloud cover:",
         best_properties.get("eo:cloud_cover"),
     )
+    scene_datetime = client.get_scene_datetime(best_scene)
+
+    print()
+    print("Acquisition datetime:", scene_datetime)
 
 
 if __name__ == "__main__":

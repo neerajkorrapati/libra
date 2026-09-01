@@ -57,3 +57,32 @@ def test_select_best_scene_raises_when_empty():
         match="No suitable Sentinel-2 scenes",
     ):
         client.select_best_scene([])
+
+def test_get_scene_datetime():
+    """Scene acquisition datetime should be extracted."""
+
+    client = object.__new__(CopernicusClient)
+
+    scene = {
+        "id": "test-scene",
+        "properties": {
+            "datetime": "2026-07-15T05:15:29.39Z",
+        },
+    }
+
+    result = client.get_scene_datetime(scene)
+
+    assert result == "2026-07-15T05:15:29.39Z"
+
+def test_get_scene_datetime_raises_when_missing():
+    """Missing acquisition datetime should raise clearly."""
+
+    client = object.__new__(CopernicusClient)
+
+    with pytest.raises(
+        ValueError,
+        match="acquisition datetime",
+    ):
+        client.get_scene_datetime(
+            {"id": "test-scene", "properties": {}}
+        )
