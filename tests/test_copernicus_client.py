@@ -47,3 +47,13 @@ def test_select_best_scene():
     selected = client.select_best_scene(scenes)
 
     assert selected["id"] == "newer-scene"
+def test_select_best_scene_raises_when_empty():
+    """Selection should fail clearly when no scenes exist."""
+
+    client = object.__new__(CopernicusClient)
+
+    with pytest.raises(
+        ValueError,
+        match="No suitable Sentinel-2 scenes",
+    ):
+        client.select_best_scene([])
