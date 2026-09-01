@@ -55,35 +55,6 @@ def read_bands(
     raster_path: str | Path,
     expected_bands: int = EXPECTED_BANDS,
 ) -> np.ndarray:
-    """
-    Read Sentinel-2 bands as a NumPy array.
-
-    Returns:
-        Array with shape (bands, height, width)
-        and dtype float32.
-    """
-
-    metadata = validate_raster(
-        raster_path,
-        expected_bands=expected_bands,
-    )
-
-    with rasterio.open(metadata["path"]) as src:
-        data = src.read()
-
-    if not np.isfinite(data).all():
-        raise ValueError(
-            "Raster contains NaN or infinite values."
-        )
-
-    return data.astype(
-        np.float32,
-        copy=False,
-    )
-def read_bands(
-    raster_path: str | Path,
-    expected_bands: int = EXPECTED_BANDS,
-) -> np.ndarray:
     """Read and validate Sentinel-2 bands."""
 
     metadata = validate_raster(

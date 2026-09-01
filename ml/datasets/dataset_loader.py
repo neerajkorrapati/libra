@@ -3,6 +3,7 @@ from pathlib import Path
 import numpy as np
 import rasterio
 from rasterio.enums import Resampling
+import torch
 
 
 DEFAULT_SCALE = 4
@@ -116,14 +117,16 @@ def create_lr_hr_pairs(
 
     return pairs
 
-class SentinelDataset:
-    """Dataset interface for Sentinel-2 LR/HR samples."""
+class SentinelDataset(torch.utils.data.Dataset):
+    """Dataset interface for Sentinel-2 LR/HR samples for PyTorch."""
 
     def __init__(
         self,
         pairs: list[dict[str, str]],
+        augment: bool = False,
     ) -> None:
         self.pairs = pairs
+        self.augment = augment
 
         if not pairs:
             raise ValueError(
@@ -133,7 +136,7 @@ class SentinelDataset:
     def __len__(self) -> int:
         return len(self.pairs)
 
-    def __getitem__(self, index: int) -> dict[str, np.ndarray]:
+    def __getitem__(self, index: int) -> dict[str, torch.Tensor]:
         if index < 0 or index >= len(self.pairs):
             raise IndexError(
                 f"Dataset index out of range: {index}"
@@ -162,7 +165,23 @@ class SentinelDataset:
                 "LR and HR must contain the same number of bands."
             )
 
+        # Data augmentation
+        if self.augment:
+            # Random horizontal flip
+            if np.random.rand() > 0.5:
+                lr = np.flip(lr, axis=2).copy()
+                hr = np.flip(hr, axis=2).copy()
+            # Random vertical flip
+            if np.random.rand() > 0.5:
+                lr = np.flip(lr, axis=1).copy()
+                hr = np.flip(hr, axis=1).copy()
+            # Random rotation (90, 180, 270)
+            k = np.random.randint(0, 4)
+            if k > 0:
+                lr = np.rot90(lr, k, axes=(1, 2)).copy()
+                hr = np.rot90(hr, k, axes=(1, 2)).copy()
+
         return {
-            "lr": lr,
-            "hr": hr,
+            "lr": torch.from_numpy(lr),
+            "hr": torch.from_numpy(hr),
         }
