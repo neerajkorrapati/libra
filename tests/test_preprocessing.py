@@ -10,6 +10,7 @@ from ml.preprocessing.rasterio_utils import (
     validate_raster,
     validate_reflectance,
 )
+from ml.preprocessing.tile_loader import extract_tiles
 
 def create_test_raster(
     path,
@@ -124,3 +125,57 @@ def test_validate_reflectance_rejects_out_of_range():
         match="between 0 and 1",
     ):
         validate_reflectance(data)
+
+def test_extract_tiles():
+    """A 128x128 raster should produce four 64x64 tiles."""
+
+    data = np.zeros(
+        (4, 128, 128),
+        dtype=np.float32,
+    )
+
+    tiles = list(
+        extract_tiles(
+            data,
+            tile_size=64,
+        )
+    )
+
+    assert len(tiles) == 4
+
+    for tile in tiles:
+        assert tile.shape == (4, 64, 64)
+        assert tile.dtype == np.float32
+
+def test_extract_tiles_rejects_invalid_dimensions():
+    """Tile extraction should reject non-raster input."""
+
+    data = np.zeros(
+        (128, 128),
+        dtype=np.float32,
+    )
+
+    with pytest.raises(
+        ValueError,
+        match="shape",
+    ):
+        list(extract_tiles(data))
+
+def test_extract_tiles_rejects_too_large_tile():
+    """Tile size cannot exceed raster dimensions."""
+
+    data = np.zeros(
+        (4, 32, 32),
+        dtype=np.float32,
+    )
+
+    with pytest.raises(
+        ValueError,
+        match="cannot exceed",
+    ):
+        list(
+            extract_tiles(
+                data,
+                tile_size=64,
+            )
+        )
