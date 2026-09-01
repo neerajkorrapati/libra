@@ -12,6 +12,8 @@ from ml.preprocessing.rasterio_utils import (
 )
 from ml.preprocessing.tile_loader import extract_tiles
 
+from ml.datasets.dataset_loader import create_lr_hr_pairs
+
 def create_test_raster(
     path,
     bands=4,
@@ -178,4 +180,73 @@ def test_extract_tiles_rejects_too_large_tile():
                 data,
                 tile_size=64,
             )
+        )
+
+def test_create_lr_hr_pairs(tmp_path):
+    """Create correctly shaped LR/HR pairs."""
+
+    raster_path = tmp_path / "input.tif"
+
+    create_test_raster(
+        raster_path,
+        bands=4,
+        width=128,
+        height=128,
+    )
+
+    output_dir = tmp_path / "pairs"
+
+    pairs = create_lr_hr_pairs(
+        raster_path,
+        output_dir,
+        hr_tile_size=64,
+        scale=4,
+    )
+
+    assert len(pairs) == 4
+
+    hr = np.load(pairs[0]["hr"])
+    lr = np.load(pairs[0]["lr"])
+
+    assert hr.shape == (4, 64, 64)
+    assert lr.shape == (4, 16, 16)
+
+    assert hr.dtype == np.float32
+    assert lr.dtype == np.float32
+
+def test_create_lr_hr_pairs_rejects_invalid_scale(tmp_path):
+    """Scale must be greater than one."""
+
+    raster_path = tmp_path / "input.tif"
+
+    create_test_raster(raster_path)
+
+    with pytest.raises(
+        ValueError,
+        match="greater than 1",
+    ):
+        create_lr_hr_pairs(
+            raster_path,
+            tmp_path / "pairs",
+            scale=1,
+        )
+
+def test_create_lr_hr_pairs_rejects_incompatible_tile_size(
+    tmp_path,
+):
+    """HR tile size must be divisible by scale."""
+
+    raster_path = tmp_path / "input.tif"
+
+    create_test_raster(raster_path)
+
+    with pytest.raises(
+        ValueError,
+        match="divisible",
+    ):
+        create_lr_hr_pairs(
+            raster_path,
+            tmp_path / "pairs",
+            hr_tile_size=65,
+            scale=4,
         )
