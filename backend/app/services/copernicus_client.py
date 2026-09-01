@@ -70,3 +70,46 @@ class CopernicusClient:
         self._access_token = access_token
 
         return access_token
+
+    def search_scenes(
+            self,
+            bbox: list[float],
+            start_datetime: str,
+            end_datetime: str,
+            max_cloud_cover: float = 20.0,
+            limit: int = 10,
+        ) -> list[dict]:
+            """Search for Sentinel-2 L2A scenes matching the criteria."""
+
+            if self._access_token is None:
+                self.authenticate()
+
+            catalog_url = f"{self.base_url}/catalog/v1/search"
+
+            payload = {
+                "collections": ["sentinel-2-l2a"],
+                "bbox": bbox,
+                "datetime": f"{start_datetime}/{end_datetime}",
+                "limit": limit,
+                "filter": (
+                    f"eo:cloud_cover <= {max_cloud_cover}"
+                ),
+            }
+
+            response = requests.post(
+                catalog_url,
+                headers={
+                    "Authorization": (
+                        f"Bearer {self._access_token}"
+                    ),
+                    "Content-Type": "application/json",
+                },
+                json=payload,
+                timeout=60,
+            )
+
+            response.raise_for_status()
+
+            data = response.json()
+
+            return data.get("features", [])
