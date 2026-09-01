@@ -14,7 +14,7 @@ CATALOG_URL = (
     os.getenv("COPERNICUS_BASE_URL")
     + "/catalog/v1/search"
 )
-
+MAX_CLOUD_COVER = 20.0
 
 def get_access_token() -> str:
     """Get an OAuth access token from CDSE."""
@@ -47,8 +47,8 @@ def search_sentinel2(token: str) -> list[dict]:
             "2026-08-31T23:59:59Z"
         ),
         "limit": 5,
+        "filter": f"eo:cloud_cover <= {MAX_CLOUD_COVER}",
     }
-
     response = requests.post(
         CATALOG_URL,
         headers={
