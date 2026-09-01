@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 
 import requests
 from dotenv import load_dotenv
@@ -130,3 +131,103 @@ class CopernicusClient:
                 "properties", {}
             ).get("datetime", ""),
         )
+    def download_bands(
+        self,
+        bbox: list[float],
+        start_datetime: str,
+        end_datetime: str,
+        output_path: str,
+        width: int = 512,
+        height: int = 512,
+        max_cloud_cover: float = 20.0,
+    ) -> str:
+        """Download Sentinel-2 B02, B03, B04 and B08 as GeoTIFF."""
+
+        if self._access_token is None:
+            self.authenticate()
+
+        process_url = f"{self.base_url}/api/v1/process"
+
+        evalscript = """
+        //VERSION=3
+
+        function setup() {
+            return {
+                input: [{
+                    bands: ["B02", "B03", "B04", "B08"],
+                    units: "REFLECTANCE"
+                }],
+                output: {
+                    bands: 4,
+                    sampleType: "FLOAT32"
+                }
+            };
+        }
+
+        function evaluatePixel(sample) {
+            return [
+                sample.B02,
+                sample.B03,
+                sample.B04,
+                sample.B08
+            ];
+        }
+        """
+
+        payload = {
+            "input": {
+                "bounds": {
+                    "bbox": bbox
+                },
+                "data": [
+                    {
+                        "type": "sentinel-2-l2a",
+                        "dataFilter": {
+                            "timeRange": {
+                                "from": start_datetime,
+                                "to": end_datetime,
+                            },
+                            "maxCloudCoverage": max_cloud_cover,
+                            "mosaickingOrder": "mostRecent",
+                        },
+                    }
+                ],
+            },
+            "output": {
+                "width": width,
+                "height": height,
+                "responses": [
+                    {
+                        "identifier": "default",
+                        "format": {
+                            "type": "image/tiff"
+                        },
+                    }
+                ],
+            },
+            "evalscript": evalscript,
+        }
+
+        response = requests.post(
+            process_url,
+            headers={
+                "Authorization": (
+                    f"Bearer {self._access_token}"
+                ),
+                "Content-Type": "application/json",
+            },
+            json=payload,
+            timeout=300,
+        )
+
+        response.raise_for_status()
+
+        output = Path(output_path)
+        output.parent.mkdir(
+            parents=True,
+            exist_ok=True,
+        )
+
+        output.write_bytes(response.content)
+
+        return str(output)
