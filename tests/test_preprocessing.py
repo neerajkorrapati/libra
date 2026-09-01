@@ -14,6 +14,11 @@ from ml.preprocessing.tile_loader import extract_tiles
 
 from ml.datasets.dataset_loader import create_lr_hr_pairs
 
+from ml.datasets.dataset_loader import (
+    SentinelDataset,
+    create_lr_hr_pairs,
+)
+
 def create_test_raster(
     path,
     bands=4,
@@ -250,3 +255,45 @@ def test_create_lr_hr_pairs_rejects_incompatible_tile_size(
             hr_tile_size=65,
             scale=4,
         )
+
+def test_sentinel_dataset(tmp_path):
+    """Dataset should return LR/HR samples."""
+
+    raster_path = tmp_path / "input.tif"
+
+    create_test_raster(
+        raster_path,
+        bands=4,
+        width=128,
+        height=128,
+    )
+
+    output_dir = tmp_path / "pairs"
+
+    pairs = create_lr_hr_pairs(
+        raster_path,
+        output_dir,
+        hr_tile_size=64,
+        scale=4,
+    )
+
+    dataset = SentinelDataset(pairs)
+
+    assert len(dataset) == 4
+
+    sample = dataset[0]
+
+    assert sample["lr"].shape == (4, 16, 16)
+    assert sample["hr"].shape == (4, 64, 64)
+
+    assert sample["lr"].dtype == np.float32
+    assert sample["hr"].dtype == np.float32
+
+def test_sentinel_dataset_rejects_empty_pairs():
+    """An empty dataset should be rejected."""
+
+    with pytest.raises(
+        ValueError,
+        match="no pairs",
+    ):
+        SentinelDataset([])

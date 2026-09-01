@@ -115,3 +115,54 @@ def create_lr_hr_pairs(
                 )
 
     return pairs
+
+class SentinelDataset:
+    """Dataset interface for Sentinel-2 LR/HR samples."""
+
+    def __init__(
+        self,
+        pairs: list[dict[str, str]],
+    ) -> None:
+        self.pairs = pairs
+
+        if not pairs:
+            raise ValueError(
+                "Dataset cannot be initialized with no pairs."
+            )
+
+    def __len__(self) -> int:
+        return len(self.pairs)
+
+    def __getitem__(self, index: int) -> dict[str, np.ndarray]:
+        if index < 0 or index >= len(self.pairs):
+            raise IndexError(
+                f"Dataset index out of range: {index}"
+            )
+
+        pair = self.pairs[index]
+
+        lr = np.load(pair["lr"]).astype(
+            np.float32,
+            copy=False,
+        )
+
+        hr = np.load(pair["hr"]).astype(
+            np.float32,
+            copy=False,
+        )
+
+        if lr.ndim != 3 or hr.ndim != 3:
+            raise ValueError(
+                "LR and HR samples must have shape "
+                "(bands, height, width)."
+            )
+
+        if lr.shape[0] != hr.shape[0]:
+            raise ValueError(
+                "LR and HR must contain the same number of bands."
+            )
+
+        return {
+            "lr": lr,
+            "hr": hr,
+        }
