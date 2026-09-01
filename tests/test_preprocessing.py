@@ -297,3 +297,59 @@ def test_sentinel_dataset_rejects_empty_pairs():
         match="no pairs",
     ):
         SentinelDataset([])
+
+def test_end_to_end_preprocessing_pipeline(tmp_path):
+    """Validate the complete preprocessing flow."""
+
+    raster_path = tmp_path / "input.tif"
+
+    create_test_raster(
+        raster_path,
+        bands=4,
+        width=128,
+        height=128,
+    )
+
+    # 1. Read and validate the raster.
+    data = read_bands(raster_path)
+
+    assert data.shape == (4, 128, 128)
+    assert data.dtype == np.float32
+
+    # 2. Extract spatial tiles.
+    tiles = list(
+        extract_tiles(
+            data,
+            tile_size=64,
+        )
+    )
+
+    assert len(tiles) == 4
+
+    for tile in tiles:
+        assert tile.shape == (4, 64, 64)
+
+    # 3. Generate LR/HR pairs.
+    output_dir = tmp_path / "pairs"
+
+    pairs = create_lr_hr_pairs(
+        raster_path,
+        output_dir,
+        hr_tile_size=64,
+        scale=4,
+    )
+
+    assert len(pairs) == 4
+
+    # 4. Load through the dataset interface.
+    dataset = SentinelDataset(pairs)
+
+    assert len(dataset) == 4
+
+    sample = dataset[0]
+
+    assert sample["lr"].shape == (4, 16, 16)
+    assert sample["hr"].shape == (4, 64, 64)
+
+    assert sample["lr"].dtype == np.float32
+    assert sample["hr"].dtype == np.float32
