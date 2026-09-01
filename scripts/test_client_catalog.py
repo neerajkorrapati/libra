@@ -26,6 +26,23 @@ def main() -> None:
             "Cloud cover:",
             properties.get("eo:cloud_cover"),
         )
+        best_scene = client.select_best_scene(scenes)
+
+    best_properties = best_scene.get("properties", {})
+
+    print()
+    print("=" * 50)
+    print("SELECTED SCENE")
+    print("=" * 50)
+    print("ID:", best_scene.get("id"))
+    print(
+        "Date:",
+        best_properties.get("datetime"),
+    )
+    print(
+        "Cloud cover:",
+        best_properties.get("eo:cloud_cover"),
+    )
 
 
 if __name__ == "__main__":

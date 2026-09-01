@@ -113,3 +113,20 @@ class CopernicusClient:
             data = response.json()
 
             return data.get("features", [])
+    def select_best_scene(
+        self,
+        scenes: list[dict],
+    ) -> dict:
+        """Select the most recent suitable scene."""
+
+        if not scenes:
+            raise ValueError(
+                "No suitable Sentinel-2 scenes were found."
+            )
+
+        return max(
+            scenes,
+            key=lambda scene: scene.get(
+                "properties", {}
+            ).get("datetime", ""),
+        )

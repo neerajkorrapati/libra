@@ -15,3 +15,35 @@ def test_client_requires_configuration(monkeypatch):
 
     with pytest.raises(RuntimeError, match="Missing required"):
         CopernicusClient()
+def test_select_best_scene():
+    """Newest acquisition should be selected."""
+
+    client = object.__new__(CopernicusClient)
+
+    scenes = [
+        {
+            "id": "older-scene",
+            "properties": {
+                "datetime": "2026-06-28T05:15:10Z",
+                "eo:cloud_cover": 15.22,
+            },
+        },
+        {
+            "id": "newer-scene",
+            "properties": {
+                "datetime": "2026-07-15T05:15:29Z",
+                "eo:cloud_cover": 0.83,
+            },
+        },
+        {
+            "id": "oldest-scene",
+            "properties": {
+                "datetime": "2026-06-05T05:15:28Z",
+                "eo:cloud_cover": 5.58,
+            },
+        },
+    ]
+
+    selected = client.select_best_scene(scenes)
+
+    assert selected["id"] == "newer-scene"
