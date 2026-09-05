@@ -1,1 +1,10 @@
-# Global requirements
+# Core runtime
+numpy
+requests
+python-dotenv
+
+# Geospatial
+rasterio
+
+# Testing
+pytest
